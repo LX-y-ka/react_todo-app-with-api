@@ -4,7 +4,7 @@ import { FILTERS } from '../../utils/constants';
 type Props = {
   activeTodosCount: number;
   filtredField: FILTERS;
-  onFiltr: (filtr: FILTERS) => void;
+  onFilter: (filtr: FILTERS) => void;
   hasCompleted: boolean;
   onDeleteCompleted: () => void;
 };
@@ -12,7 +12,7 @@ type Props = {
 export const Footer: React.FC<Props> = ({
   activeTodosCount,
   filtredField,
-  onFiltr,
+  onFilter,
   hasCompleted,
   onDeleteCompleted,
 }) => {
@@ -32,7 +32,7 @@ export const Footer: React.FC<Props> = ({
               selected: filtredField === field,
             })}
             data-cy={`FilterLink${field}`}
-            onClick={() => onFiltr(field)}
+            onClick={() => onFilter(field)}
           >
             {field}
           </a>

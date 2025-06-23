@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/indent */
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
@@ -13,7 +14,12 @@ import {
 } from './api/todos';
 import { Todo } from './types/Todo';
 import { TodoList } from './components/TodoList/TodoList';
-import { ERROR_MESSAGES, FILTERS } from './utils/constants';
+import {
+  ERROR_MESSAGES,
+  FILTERS,
+  ProcessState,
+  States,
+} from './utils/constants';
 import { Footer } from './components/Footer/Footer';
 import { Header } from './components/Header/Header';
 import cn from 'classnames';
@@ -24,9 +30,7 @@ export const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
-  const [deletingTodosId, setDeletingTodosId] = useState<number[]>([]);
-  const [togglingTodosId, setTogglingTodosId] = useState<number[]>([]);
-  const [editingTodosMap, setEditingTodosMap] = useState<Map<number, boolean>>(
+  const [procTodoIds, setProcTodoIds] = useState<Map<number, ProcessState>>(
     new Map(),
   );
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +92,7 @@ export const App: React.FC = () => {
     setError(null);
   };
 
-  const onFiltr = (field: FILTERS) => {
+  const onFilter = (field: FILTERS) => {
     if (field === filtredField) {
       return;
     }
@@ -129,7 +133,15 @@ export const App: React.FC = () => {
   };
 
   const handleDelete = (todoId: number) => {
-    setDeletingTodosId(prev => [...prev, todoId]);
+    // setDeletingTodosId(prev => [...prev, todoId]);
+
+    setProcTodoIds(prev => {
+      const newMap = new Map(prev);
+
+      newMap.set(todoId, { [States.Deleting]: true });
+
+      return newMap;
+    });
 
     deleteTodo(todoId)
       .then(() => {
@@ -139,7 +151,14 @@ export const App: React.FC = () => {
         showError(ERROR_MESSAGES.DELETE_TODO);
       })
       .finally(() => {
-        setDeletingTodosId(prev => prev.filter(id => id !== todoId));
+        // setDeletingTodosId(prev => prev.filter(id => id !== todoId));
+        setProcTodoIds(prev => {
+          const newMap = new Map(prev);
+
+          newMap.delete(todoId);
+
+          return newMap;
+        });
         setTimeout(() => inputRef.current?.focus(), 0);
       });
   };
@@ -155,7 +174,16 @@ export const App: React.FC = () => {
   };
 
   const handleCheck = (todosToCheckId: number[], completedNew: boolean) => {
-    setTogglingTodosId(prev => [...prev, ...todosToCheckId]);
+    // setTogglingTodosId(prev => [...prev, ...todosToCheckId]);
+    setProcTodoIds(prev => {
+      const newMap = new Map(prev);
+
+      todosToCheckId.forEach(id => {
+        newMap.set(id, { [States.Toggling]: true });
+      });
+
+      return newMap;
+    });
 
     const sendChecks = todosToCheckId.map(t =>
       updateCheckTodo(t, completedNew).then(() => t),
@@ -178,9 +206,15 @@ export const App: React.FC = () => {
       })
       .catch(() => showError(ERROR_MESSAGES.UPDATE_TODO))
       .finally(() => {
-        setTogglingTodosId(prev =>
-          prev.filter(i => !todosToCheckId.includes(i)),
-        );
+        setProcTodoIds(prev => {
+          const newMap = new Map(prev);
+
+          todosToCheckId.forEach(id => {
+            newMap.delete(id);
+          });
+
+          return newMap;
+        });
       });
   };
 
@@ -209,13 +243,23 @@ export const App: React.FC = () => {
 
   const handleEditTitle = (todo: Todo, newTitle: string) => {
     if (todo.title === newTitle) {
+      if (procTodoIds.has(todo.id)) {
+        setProcTodoIds(prev => {
+          const newMap = new Map(prev);
+
+          newMap.delete(todo.id);
+
+          return newMap;
+        });
+      }
+
       return;
     }
 
-    setEditingTodosMap(prev => {
+    setProcTodoIds(prev => {
       const newMap = new Map(prev);
 
-      newMap.set(todo.id, true);
+      newMap.set(todo.id, { [States.Editing]: true });
 
       return newMap;
     });
@@ -227,10 +271,10 @@ export const App: React.FC = () => {
         })
         .catch(() => {
           showError(ERROR_MESSAGES.DELETE_TODO);
-          setEditingTodosMap(prev => {
+          setProcTodoIds(prev => {
             const newMap = new Map(prev);
 
-            newMap.set(todo.id, false);
+            newMap.set(todo.id, { [States.Editing]: false });
 
             return newMap;
           });
@@ -254,7 +298,7 @@ export const App: React.FC = () => {
           }),
         );
 
-        setEditingTodosMap(prev => {
+        setProcTodoIds(prev => {
           const newMap = new Map(prev);
 
           newMap.delete(todo.id);
@@ -264,10 +308,10 @@ export const App: React.FC = () => {
       })
       .catch(() => {
         showError(ERROR_MESSAGES.UPDATE_TODO);
-        setEditingTodosMap(prev => {
+        setProcTodoIds(prev => {
           const newMap = new Map(prev);
 
-          newMap.set(todo.id, false);
+          newMap.set(todo.id, { [States.Editing]: false });
 
           return newMap;
         });
@@ -293,11 +337,9 @@ export const App: React.FC = () => {
           todos={filtredTodos}
           tempTodo={tempTodo}
           onDelete={handleDelete}
-          deletingTodosId={deletingTodosId}
           onCheck={handleCheck}
-          togglingTodosId={togglingTodosId}
           onEditTodo={handleEditTitle}
-          editingTodos={editingTodosMap}
+          processingTodos={procTodoIds}
         />
 
         {/* Hide the footer if there are no todos */}
@@ -305,7 +347,7 @@ export const App: React.FC = () => {
           <Footer
             activeTodosCount={todos.length - completedCount}
             filtredField={filtredField}
-            onFiltr={onFiltr}
+            onFilter={onFilter}
             hasCompleted={hasCompleted}
             onDeleteCompleted={deleteCompleted}
           />

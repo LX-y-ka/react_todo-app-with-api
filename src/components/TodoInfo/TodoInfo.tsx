@@ -1,25 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Todo } from '../../types/Todo';
 import cn from 'classnames';
+import { ProcessState } from '../../utils/constants';
 
 type Props = {
   todo: Todo;
-  deletingTodosId: number[];
   onCheck: (todosId: number[], completed: boolean) => void;
   onDelete: (id: number) => void;
-  togglingTodosId: number[];
   onEditTodo: (todo: Todo, title: string) => void;
-  titleUdatingTodosId: Map<number, boolean>;
+  processingTodos: Map<number, ProcessState>;
 };
 
 export const TodoInfo: React.FC<Props> = ({
   todo,
-  deletingTodosId,
   onDelete,
   onCheck,
-  togglingTodosId,
   onEditTodo,
-  titleUdatingTodosId,
+  processingTodos,
 }) => {
   const { id, title, completed } = todo;
   const [todoEditing, setTodoEditing] = useState(false);
@@ -32,8 +29,6 @@ export const TodoInfo: React.FC<Props> = ({
 
     if (trimTitle === title) {
       setTodoEditing(false);
-
-      return;
     }
 
     waitingForTitleEditing.current = true;
@@ -54,7 +49,7 @@ export const TodoInfo: React.FC<Props> = ({
       inputRef.current.focus();
     }
 
-    if (waitingForTitleEditing.current && !titleUdatingTodosId.has(id)) {
+    if (waitingForTitleEditing.current && !processingTodos.has(id)) {
       setTodoEditing(false);
       waitingForTitleEditing.current = false;
     }
@@ -62,7 +57,7 @@ export const TodoInfo: React.FC<Props> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [titleUdatingTodosId, id, todoEditing]);
+  }, [processingTodos, id, todoEditing]);
 
   return (
     <div
@@ -132,9 +127,8 @@ export const TodoInfo: React.FC<Props> = ({
         className={cn('modal overlay', {
           'is-active':
             id === 0 ||
-            deletingTodosId?.includes(id) ||
-            togglingTodosId?.includes(id) ||
-            (titleUdatingTodosId.has(id) && titleUdatingTodosId.get(id)),
+            (processingTodos.has(id) &&
+              processingTodos.get(id)?.editing !== false),
         })}
       >
         <div className="modal-background has-background-white-ter" />

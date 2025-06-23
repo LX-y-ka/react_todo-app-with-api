@@ -11,3 +11,11 @@ export const ERROR_MESSAGES = {
   UPDATE_TODO: 'Unable to update a todo',
   EMPTY_TITLE: 'Title should not be empty',
 };
+
+export enum States {
+  Deleting = 'deleting',
+  Toggling = 'toggling',
+  Editing = 'editing',
+}
+
+export type ProcessState = Partial<Record<States, boolean>>;
